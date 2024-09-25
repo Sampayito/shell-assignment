@@ -42,7 +42,7 @@ int main(int argc, char* argv[] )
   char* command_string = (char*)malloc(MAX_COMMAND_SIZE); //holds user's input command
   char error_message[30] = "An error has occurred\n";
 
-  FILE* batch_file = NULL;
+  FILE* batch_file = NULL; //batch mode file pointer
   int is_batch_mode = 0;
 
   if (argc > 2)
@@ -61,9 +61,9 @@ int main(int argc, char* argv[] )
     is_batch_mode = 1;
   }
 
-  while(1)
+  while(1) //main shell interaction loop
   {
-    if (!is_batch_mode)
+    if (!is_batch_mode) //in interactive mode
     {
       printf ("msh> "); //prints out the msh prompt
 
@@ -89,14 +89,14 @@ int main(int argc, char* argv[] )
       continue;
     }
 
-    ///* Parse input *///
+    ///* Parse input command into tokens *///
     char *token[MAX_NUM_ARGUMENTS]; //holds commands and arguments (tokens)
 
     int token_count = 0;                                 
 
-    char *argument_pointer; //pointer to point to token parsed by strsep                                  
+    char *argument_pointer; //pointer to current argument parsed by strsep                                  
                                                            
-    char *working_string = strdup(command_string); //duplicates string to modify copy        
+    char *working_string = strdup(command_string); //duplicates command string for parsing       
 
     //we are going to move the working_string pointer to
     //keep track of its original value so we can deallocate
@@ -106,7 +106,7 @@ int main(int argc, char* argv[] )
     
     //strsep() splits working_string into tokens based on delimiters
     //each call to strsep() updates working_string to point to the next part of the string
-    while (((argument_pointer = strsep(&working_string, WHITESPACE)) != NULL) && //while more tokens
+    while (((argument_pointer = strsep(&working_string, WHITESPACE)) != NULL) &&//while more tokens
               (token_count < MAX_NUM_ARGUMENTS - 1)) //reserving space for the NULL terminator
     {
       if(strlen(argument_pointer) > 0) //skip tokens that might result from consecutive delimiters
@@ -116,16 +116,7 @@ int main(int argc, char* argv[] )
         token_count++;
       }
     }
-    token[token_count] = NULL; //has to be NULL terminated for execvp to work
-
-////////////////////////////////////////////////////////////////////////////
-    // Now print the tokenized input as a debug check
-    // int token_index  = 0;
-    // for( token_index = 0; token_index < token_count; token_index ++ ) 
-    // {
-    //   printf("token[%d] = %s\n", token_index, token[token_index] );  
-    // }
-///////^^this just prints tokens////////////////////////////////////////////
+    token[token_count] = NULL; //has to be NULL terminated for execv to work
 
     if (token_count == 0) //skip if no tokens found and prompt user again
     {
@@ -133,6 +124,7 @@ int main(int argc, char* argv[] )
       continue;
     }
 
+    //handles built-in commands: exit and quit
     if (strcmp(token[0], "exit") == 0 || strcmp(token[0], "quit") == 0)
     {
       if (token_count != 1)
@@ -151,8 +143,8 @@ int main(int argc, char* argv[] )
       }
       continue;
     }
-    else if (strcmp(token[0], "cd") == 0)
-    { //fix cd with single argument
+    else if (strcmp(token[0], "cd") == 0) //handles built in cd command to change directories
+    {
       if (token_count != 2) //expects one arg with cd
       {
         write(STDERR_FILENO, error_message, strlen(error_message));
@@ -173,8 +165,9 @@ int main(int argc, char* argv[] )
       continue; 
     }
 
+    //handles external commands
     char *path[] = {"/bin/", "/usr/bin/", "/usr/local/bin/", "./"}; //where executable commands are
-    char cmd_path[MAX_PATH];
+    char cmd_path[MAX_PATH]; //full path for the command
     int found = 0;
 
     for (int i = 0; i < 4; i++) //loop through each directory in path[]
@@ -231,7 +224,7 @@ int main(int argc, char* argv[] )
 
           redirection_found = 1;
 
-          if (token[i + 1] == NULL || token[i + 2] != NULL) //no file(s) provided after >
+          if (token[i + 1] == NULL || token[i + 2] != NULL) //valid output file check after >
           {
             write(STDERR_FILENO, error_message, strlen(error_message));
             exit(1);
@@ -254,7 +247,7 @@ int main(int argc, char* argv[] )
       }
 
       //execv replaces current process with new process
-      //take a path to the executable and an array of NULL terminated arguments
+      //takes a path to the executable and an array of NULL terminated arguments
       if (execv(cmd_path, token) == -1)
       {
         //could not run executable
