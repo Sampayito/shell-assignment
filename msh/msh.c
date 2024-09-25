@@ -217,16 +217,27 @@ int main(int argc, char* argv[] )
     if (child_pid == 0)
     {
       //redirection
+      int redirection_found = 0;
       int i;
       for (i = 0; token[i] != NULL; i++)
       {
         if (strcmp(token[i], ">") == 0)
         {
-          if (token[i + 1] == NULL) //no file provided after >
+          if (redirection_found)
           {
             write(STDERR_FILENO, error_message, strlen(error_message));
             exit(1);
           }
+
+          redirection_found = 1;
+
+          if (token[i + 1] == NULL || token[i + 2] != NULL) //no file(s) provided after >
+          {
+            write(STDERR_FILENO, error_message, strlen(error_message));
+            exit(1);
+          }
+
+          //opening file for redirection
           int fd = open(token[i + 1], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
           if (fd < 0)
           {
