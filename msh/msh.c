@@ -41,15 +41,45 @@ int main(int argc, char* argv[] )
   char* command_string = (char*)malloc(MAX_COMMAND_SIZE); //holds user's input command
   char error_message[30] = "An error has occured\n";
 
+  FILE* batch_file = NULL;
+  int is_batch_mode = 0;
+
+  if (argc > 2)
+  {
+    write(STDERR_FILENO, error_message, strlen(error_message));
+    exit(1);
+  }
+  else if (argc == 2)
+  {
+    batch_file = fopen(argv[1], "r");
+    if (batch_file == NULL)
+    {
+      write(STDERR_FILENO, error_message, strlen(error_message));
+      exit(1);
+    }
+    is_batch_mode = 1;
+  }
+
   while(1)
   {
-    printf ("msh> "); //prints out the msh prompt
-
-    //reads the command from the command line
-    //the while command will wait here until the user inputs something
-    if (!fgets(command_string, MAX_COMMAND_SIZE, stdin))
+    if (!is_batch_mode)
     {
-      break; //reached EOF
+      printf ("msh> "); //prints out the msh prompt
+
+      //reads the command from the command line
+      //the while command will wait here until the user inputs something
+      if (!fgets(command_string, MAX_COMMAND_SIZE, stdin))
+      {
+        break; //reached EOF
+      }
+    }
+    else //in batch mode
+    {
+      if (!fgets(command_string, MAX_COMMAND_SIZE, batch_file))
+      {
+        break;
+      }
+      printf("%s", command_string);
     }
 
     command_string[strcspn(command_string, "\n")] = '\0'; //replaces newline with null terminator
@@ -79,26 +109,22 @@ int main(int argc, char* argv[] )
     while (((argument_pointer = strsep(&working_string, WHITESPACE)) != NULL) && //while more tokens
               (token_count < MAX_NUM_ARGUMENTS - 1)) //reserving space for the NULL terminator
     {
-      //token[token_count] = strndup( argument_pointer, MAX_COMMAND_SIZE );
-      //if( strlen( token[token_count] ) == 0 )
       if(strlen(argument_pointer) > 0) //skip tokens that might result from consecutive delimiters
       //argument_pointer contains token obtained by strsep()
       {
         token[token_count] = strdup(argument_pointer); //duplicate token and store in token array
-        //token[token_count] = NULL;
         token_count++;
       }
-        //token_count++;
     }
     token[token_count] = NULL; //has to be NULL terminated for execvp to work
 
 ////////////////////////////////////////////////////////////////////////////
     // Now print the tokenized input as a debug check
-    int token_index  = 0;
-    for( token_index = 0; token_index < token_count; token_index ++ ) 
-    {
-      printf("token[%d] = %s\n", token_index, token[token_index] );  
-    }
+    // int token_index  = 0;
+    // for( token_index = 0; token_index < token_count; token_index ++ ) 
+    // {
+    //   printf("token[%d] = %s\n", token_index, token[token_index] );  
+    // }
 ///////^^this just prints tokens////////////////////////////////////////////
 
     if (token_count == 0) //skip if no tokens found and prompt user again
@@ -212,6 +238,12 @@ int main(int argc, char* argv[] )
     }
 
   }
+
+  if (batch_file)
+  {
+    fclose(batch_file);
+  }
+
   free(command_string);
   return 0;
 }
