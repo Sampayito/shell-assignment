@@ -40,7 +40,7 @@ int main(int argc, char* argv[] )
 {
 
   char* command_string = (char*)malloc(MAX_COMMAND_SIZE); //holds user's input command
-  char error_message[30] = "An error has occured\n";
+  char error_message[30] = "An error has occurred\n";
 
   FILE* batch_file = NULL;
   int is_batch_mode = 0;
@@ -80,7 +80,6 @@ int main(int argc, char* argv[] )
       {
         break;
       }
-      printf("%s", command_string);
     }
 
     command_string[strcspn(command_string, "\n")] = '\0'; //replaces newline with null terminator
