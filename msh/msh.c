@@ -29,6 +29,7 @@
 #include <stdlib.h> //malloc(), free(), exit()
 #include <errno.h>
 #include <string.h> //strlen(), strcpy(), strcmp()
+#include <fcntl.h> //open()
 
 #define WHITESPACE " \t\n" //defines delimiters when splitting command line
 #define MAX_COMMAND_SIZE 255
@@ -216,6 +217,32 @@ int main(int argc, char* argv[] )
 
     if (child_pid == 0)
     {
+      //redirection
+      int i;
+      for (i = 0; token[i] != NULL; i++)
+      {
+        if (strcmp(token[i], ">") == 0)
+        {
+          if (token[i + 1] == NULL) //no file provided after >
+          {
+            write(STDERR_FILENO, error_message, strlen(error_message));
+            exit(1);
+          }
+          int fd = open(token[i + 1], O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+          if (fd < 0)
+          {
+            write(STDERR_FILENO, error_message, strlen(error_message));
+            exit(1);
+          }
+          dup2(fd, STDOUT_FILENO); //redirect stdout to file
+          dup2(fd, STDERR_FILENO); //redirect stderr to file
+          close(fd);
+
+          token[i] = NULL; //trim off the > and output file
+          break;
+        }
+      }
+
       //execv replaces current process with new process
       //take a path to the executable and an array of NULL terminated arguments
       if (execv(cmd_path, token) == -1)
